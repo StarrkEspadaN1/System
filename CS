@@ -1,0 +1,92 @@
+
+using System;
+using System.Diagnostics;
+using System.Threading;
+
+class Program
+{
+    static void Main()
+    {
+        Thread thread1 = new Thread(NotepadThread);
+        Thread thread2 = new Thread(CmdThread);
+
+        thread1.Start();
+        thread2.Start();
+
+        thread1.Join();
+        thread2.Join();
+
+        Console.WriteLine("оба потока завершили работу.");
+    }
+
+    // Первый поток — запуск и закрытие Блокнота
+    static void NotepadThread()
+    {
+        Console.WriteLine("[поток 1] запуск потока.");
+
+        Process notepad = Process.Start("notepad.exe");
+
+        Console.WriteLine("[поток 1] запуск Notepad.");
+        Console.WriteLine("[поток 1] ожидание 3 секунды");
+
+        Thread.Sleep(3000);
+
+        Console.WriteLine("[поток 1] закрытие Notepad.");
+
+        if (!notepad.HasExited)
+        {
+            notepad.CloseMainWindow();
+
+            if (!notepad.WaitForExit(1000))
+            {
+                notepad.Kill();
+            }
+        }
+
+        Console.WriteLine("[поток 1] поток завершён.");
+    }
+
+    // Второй поток — выполнение команды dir
+    static void CmdThread()
+    {
+        Console.WriteLine("[поток 2] запуск потока.");
+        Console.WriteLine("[поток 2] запуск командной строки.");
+
+        ProcessStartInfo startInfo = new ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            Arguments = "/c dir",
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using (Process cmd = new Process())
+        {
+            cmd.StartInfo = startInfo;
+            cmd.Start();
+
+            Console.WriteLine("[поток 2] выполнение команды dir:");
+
+            string result = cmd.StandardOutput.ReadToEnd();
+            string error = cmd.StandardError.ReadToEnd();
+
+            cmd.WaitForExit();
+
+            Console.WriteLine(result);
+
+            if (!string.IsNullOrEmpty(error))
+                Console.WriteLine(error);
+        }
+
+        Console.WriteLine("[поток 2] поток завершён.");
+    }
+}
+
+//ps: Thread.Start() — запускает поток.
+//Thread.Sleep(3000) — остновка первого потока на 3 секунды.
+//Process.Start() — запускает внешнюю программу
+//Arguments = "/c dir" — выполняет команду dir и закрывает командную строку
+//Join() — ожидает завершения обоих потоков
+//ps2: После выполнения запуск блокнота он не закрываеться, почему?
